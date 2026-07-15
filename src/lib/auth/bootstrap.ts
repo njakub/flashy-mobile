@@ -27,3 +27,37 @@ export async function bootstrapLocalUserData(realUserId: string): Promise<void> 
     ]);
   });
 }
+
+/**
+ * Inverse of bootstrapLocalUserData, used by account deletion: re-own the
+ * (now ex-)user's rows back to LOCAL_USER_ID so the data stays usable
+ * offline, and clear dirty flags — there is no server account left to push
+ * them to, and a future sign-in under a NEW account re-dirties everything
+ * via bootstrapLocalUserData anyway.
+ */
+export async function releaseUserDataToLocal(realUserId: string): Promise<void> {
+  if (realUserId === LOCAL_USER_ID) return;
+
+  const db = await getDb();
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    await txn.runAsync("UPDATE decks SET ownerId = ?, dirty = 0 WHERE ownerId = ?", [
+      LOCAL_USER_ID,
+      realUserId,
+    ]);
+    await txn.runAsync("UPDATE cards SET ownerId = ?, dirty = 0 WHERE ownerId = ?", [
+      LOCAL_USER_ID,
+      realUserId,
+    ]);
+    await txn.runAsync("UPDATE test_runs SET ownerId = ?, dirty = 0 WHERE ownerId = ?", [
+      LOCAL_USER_ID,
+      realUserId,
+    ]);
+    // Reset the (single, global) pull cursor: it tracked the deleted
+    // account's server state, and a future sign-in under a new account must
+    // pull from the beginning.
+    await txn.runAsync(
+      "UPDATE sync_state SET decks = '0', cards = '0', testRuns = '0', testRunQuestions = '0' WHERE id = 'cursor'",
+      [],
+    );
+  });
+}

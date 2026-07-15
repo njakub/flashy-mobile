@@ -1,11 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { useThresholdPrefs } from "@/lib/grading/useThresholdPrefs";
 import { THRESHOLD_PRESETS } from "@/lib/grading/thresholdPresets";
-import { Screen, Button, Card, SegmentedControl } from "@/ui";
+import { Screen, Button, Card, InlineConfirm, SegmentedControl } from "@/ui";
 
 /**
  * Mirrors flashy/src/components/ProfilePage.tsx, trimmed to v1 mobile scope
@@ -15,10 +15,28 @@ import { Screen, Button, Card, SegmentedControl } from "@/ui";
  */
 export function ProfileScreen() {
   const { colors, space, type, textStyle } = useTheme();
-  const { status, user, logout, lastSyncAt, syncing, syncError, syncNow } = useAuth();
+  const { status, user, logout, deleteAccount, lastSyncAt, syncing, syncError, syncNow } =
+    useAuth();
   const { preset: thresholdPreset, setPresetKey } = useThresholdPrefs();
   const router = useRouter();
   const isSignedIn = status === "signedIn";
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteAccount();
+      router.replace("/");
+    } catch {
+      setDeleteError("Failed to delete account — please try again.");
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  }
 
   if (status === "loading") {
     return (
@@ -78,6 +96,25 @@ export function ProfileScreen() {
                 <Button label="Sign out" variant="secondary" onPress={() => void logout()} />
               </View>
             </View>
+            {confirmingDelete ? (
+              <InlineConfirm
+                message="Delete your account and all synced data on the server? Decks on this device stay usable offline. This cannot be undone."
+                confirmLabel={deleting ? "Deleting…" : "Yes, delete my account"}
+                onConfirm={() => void handleDeleteAccount()}
+                onCancel={() => setConfirmingDelete(false)}
+              />
+            ) : (
+              <Button
+                label="Delete account"
+                variant="ghost"
+                onPress={() => setConfirmingDelete(true)}
+              />
+            )}
+            {deleteError && (
+              <Text style={[textStyle(type.meta), { color: colors.incorrect }]}>
+                {deleteError}
+              </Text>
+            )}
           </Card>
         )}
 

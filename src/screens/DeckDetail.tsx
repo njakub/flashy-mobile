@@ -3,6 +3,7 @@ import { FlatList, Pressable, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRepositories } from "@/providers/RepositoryProvider";
+import { useReloadOnSync } from "@/lib/sync/useReloadOnSync";
 import { Screen, Button, Input, Chip, InlineConfirm } from "@/ui";
 import { FLAGGED_LABEL } from "@/lib/constants";
 import { isConceptCard } from "@/lib/content/concept";
@@ -36,6 +37,7 @@ export function DeckDetail({ deckId }: Props) {
   const [editName, setEditName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDeleteCardId, setConfirmDeleteCardId] = useState<string | null>(null);
   const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
 
   const load = useCallback(async () => {
@@ -59,6 +61,7 @@ export function DeckDetail({ deckId }: Props) {
       void load();
     }, [load]),
   );
+  useReloadOnSync(load);
 
   async function handleRename() {
     const name = editName.trim();
@@ -84,6 +87,7 @@ export function DeckDetail({ deckId }: Props) {
   }
 
   async function handleDeleteCard(cardId: string) {
+    setConfirmDeleteCardId(null);
     try {
       await cards.delete(cardId);
       await load();
@@ -201,9 +205,14 @@ export function DeckDetail({ deckId }: Props) {
               </Pressable>
             )}
           </View>
-          <Pressable onPress={() => router.push(`/decks/${deckId}/cards/new`)}>
-            <Chip label="+ Add card" variant="accentSoft" />
-          </Pressable>
+          <View style={{ flexDirection: "row", gap: space.sm }}>
+            <Pressable onPress={() => router.push(`/decks/${deckId}/import`)}>
+              <Chip label="Import" variant="neutral" />
+            </Pressable>
+            <Pressable onPress={() => router.push(`/decks/${deckId}/cards/new`)}>
+              <Chip label="+ Add card" variant="accentSoft" />
+            </Pressable>
+          </View>
         </View>
 
         {visibleCards.length === 0 ? (
@@ -219,6 +228,17 @@ export function DeckDetail({ deckId }: Props) {
               const s = statsMap.get(card.id);
               const pct = s && s.attempts > 0 ? Math.round((s.correct / s.attempts) * 100) : null;
               const hasChips = isConceptCard(card) || card.labels.length > 0;
+              if (confirmDeleteCardId === card.id) {
+                return (
+                  <View style={{ paddingVertical: space.md }}>
+                    <InlineConfirm
+                      message={`Delete "${previewText(card.front)}"?`}
+                      onConfirm={() => handleDeleteCard(card.id)}
+                      onCancel={() => setConfirmDeleteCardId(null)}
+                    />
+                  </View>
+                );
+              }
               return (
                 <View
                   style={{
@@ -277,7 +297,7 @@ export function DeckDetail({ deckId }: Props) {
                       <Pressable onPress={() => router.push(`/decks/${deckId}/cards/${card.id}/edit`)}>
                         <Text style={[textStyle(type.micro), { color: colors.text3 }]}>Edit</Text>
                       </Pressable>
-                      <Pressable onPress={() => handleDeleteCard(card.id)}>
+                      <Pressable onPress={() => setConfirmDeleteCardId(card.id)}>
                         <Text style={[textStyle(type.micro), { color: colors.text3 }]}>Delete</Text>
                       </Pressable>
                     </View>

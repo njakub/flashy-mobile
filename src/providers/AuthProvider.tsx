@@ -9,9 +9,9 @@ import React, {
 } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
-import { AuthClient, type AuthUser } from "@/lib/auth/AuthClient";
+import { AuthClient, type AuthTokens, type AuthUser } from "@/lib/auth/AuthClient";
 import { tokenStore } from "@/lib/auth/tokenStore";
-import { bootstrapLocalUserData } from "@/lib/auth/bootstrap";
+import { bootstrapLocalUserData, releaseUserDataToLocal } from "@/lib/auth/bootstrap";
 import { SyncEngine, type SyncResult } from "@/lib/sync/SyncEngine";
 import { onDirty } from "@/lib/sync/dirtyBus";
 import { LOCAL_USER_ID } from "@/lib/constants";
@@ -35,7 +35,21 @@ interface AuthContextValue {
   ownerId: string;
   login(email: string, password: string): Promise<void>;
   register(email: string, password: string): Promise<void>;
+  /** identityToken from expo-apple-authentication's native credential;
+   *  fullName is only present on the user's first authorization;
+   *  authorizationCode enables server-side Apple token revocation. */
+  loginWithApple(
+    identityToken: string,
+    fullName?: { givenName?: string; familyName?: string },
+    authorizationCode?: string,
+  ): Promise<void>;
+  /** idToken from @react-native-google-signin (minted for the web client). */
+  loginWithGoogle(idToken: string): Promise<void>;
   logout(): Promise<void>;
+  /** Deletes the server account + all server data (App Store 5.1.1(v)),
+   *  then re-owns local rows to LOCAL_USER_ID so the app keeps working
+   *  offline. */
+  deleteAccount(): Promise<void>;
   lastSyncAt: string | null;
   syncError: string | null;
   syncing: boolean;
@@ -258,22 +272,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [status, runSync]);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const tokens = await AuthClient.login(email, password);
+  // Shared post-login tail for every sign-in flavor (password, Apple,
+  // Google): persist the session, then re-own any pre-sign-in local data.
+  const completeSignIn = useCallback(
+    async (tokens: AuthTokens) => {
       await applySession(tokens);
       await bootstrapLocalUserData(tokens.user.id);
     },
     [applySession],
   );
 
+  const login = useCallback(
+    async (email: string, password: string) => {
+      await completeSignIn(await AuthClient.login(email, password));
+    },
+    [completeSignIn],
+  );
+
   const register = useCallback(
     async (email: string, password: string) => {
-      const tokens = await AuthClient.register(email, password);
-      await applySession(tokens);
-      await bootstrapLocalUserData(tokens.user.id);
+      await completeSignIn(await AuthClient.register(email, password));
     },
-    [applySession],
+    [completeSignIn],
+  );
+
+  const loginWithApple = useCallback(
+    async (
+      identityToken: string,
+      fullName?: { givenName?: string; familyName?: string },
+      authorizationCode?: string,
+    ) => {
+      await completeSignIn(
+        await AuthClient.loginWithApple(identityToken, fullName, authorizationCode),
+      );
+    },
+    [completeSignIn],
+  );
+
+  const loginWithGoogle = useCallback(
+    async (idToken: string) => {
+      await completeSignIn(await AuthClient.loginWithGoogle(idToken));
+    },
+    [completeSignIn],
   );
 
   const logout = useCallback(async () => {
@@ -284,13 +324,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearSession();
   }, [clearSession]);
 
+  const deleteAccount = useCallback(async () => {
+    const userId = sessionRef.current?.user.id;
+    const token = await getAccessToken();
+    if (!userId || !token) throw new Error("Not signed in.");
+    await AuthClient.deleteAccount(token);
+    clearSession();
+    // Keep the data usable offline under the local owner; also resets the
+    // sync cursor so a future account starts a clean pull.
+    await releaseUserDataToLocal(userId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearSession]);
+
   const value: AuthContextValue = {
     status,
     user,
     ownerId: user?.id ?? LOCAL_USER_ID,
     login,
     register,
+    loginWithApple,
+    loginWithGoogle,
     logout,
+    deleteAccount,
     lastSyncAt,
     syncError,
     syncing,

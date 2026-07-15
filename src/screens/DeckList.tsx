@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { useRepositories } from "@/providers/RepositoryProvider";
+import { useReloadOnSync } from "@/lib/sync/useReloadOnSync";
 import { Screen, Button, Input } from "@/ui";
 import { StatsPanel } from "./StatsPanel";
 import type { Deck } from "@/lib/types";
@@ -47,6 +48,7 @@ export function DeckList() {
       void load();
     }, [load]),
   );
+  useReloadOnSync(load);
 
   async function handleCreate() {
     const name = newName.trim();

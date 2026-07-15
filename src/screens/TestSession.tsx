@@ -107,6 +107,10 @@ export function TestSession({ deckId }: Props) {
   }
 
   function startTest(count: number) {
+    // Warm the embedding model only once a quiz actually starts — loading it
+    // eagerly on mount paid a native-load cost (and its failure modes) even
+    // for decks that can't run a quiz at all.
+    preloadEmbeddingModel();
     const selected = sample(filteredPool, Math.min(count, filteredPool.length));
     setQueue(selected);
     setCurrentIndex(0);
@@ -125,7 +129,6 @@ export function TestSession({ deckId }: Props) {
     let cancelled = false;
     async function load() {
       setPhase("loading");
-      preloadEmbeddingModel();
       const all = await cards.getByDeck(deckId);
       if (cancelled) return;
       setPool(all);

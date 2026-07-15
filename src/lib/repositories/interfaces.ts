@@ -43,6 +43,8 @@ export interface CardRepository {
   getAllByOwner(ownerId: string): Promise<Card[]>;
   getById(id: string): Promise<Card | undefined>;
   create(card: Omit<Card, "id" | "createdAt" | "updatedAt">): Promise<Card>;
+  /** Bulk insert (import) — all-or-nothing in a single transaction. */
+  createMany(cards: Omit<Card, "id" | "createdAt" | "updatedAt">[]): Promise<Card[]>;
   update(
     id: string,
     patch: Partial<

@@ -2,17 +2,28 @@
   "expo": {
     "name": "Flashy",
     "slug": "flashy-mobile",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "scheme": "flashymobile",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.flashy.mobile"
+      "bundleIdentifier": "com.flashy.mobile",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Flashy uses the local network to connect to the development server during development."
+      }
     },
     "android": {
       "package": "com.flashy.mobile",
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#0f1218",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -36,6 +47,14 @@
           "backgroundColor": "#0f1218",
           "image": "./assets/splash-icon.png",
           "imageWidth": 200
+        }
+      ],
+      "@sentry/react-native",
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.158651950780-ejl6hru9cklf2c7i5d8vv6go79c48ibe"
         }
       ]
     ],

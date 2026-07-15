@@ -44,6 +44,25 @@ export function mergeDeck(local: StoredDeck | null, wire: WireDeck): StoredDeck 
 }
 
 /**
+ * The card fields whose edits participate in content LWW. Writers must bump
+ * updatedAt when (and ONLY when) a patch touches one of these — a
+ * scheduling-only review must not advance the content clock, or mergeCard
+ * below would treat a newer remote content edit as stale and discard it.
+ */
+export const CARD_CONTENT_FIELDS = [
+  "front",
+  "back",
+  "alternateAnswers",
+  "answerJustifications",
+  "labels",
+  "keyPoints",
+] as const;
+
+export function isCardContentPatch(patch: Record<string, unknown>): boolean {
+  return CARD_CONTENT_FIELDS.some((field) => field in patch);
+}
+
+/**
  * Card — two independent field groups, each compared against the row's
  * CURRENT local values (not a pre-push snapshot), which is what makes
  * concurrent same-device edits race-safe:

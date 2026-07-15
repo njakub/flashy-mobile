@@ -4,6 +4,7 @@ import { rowToCard, type CardRow } from "@/lib/db/rows";
 import { newId } from "@/lib/id";
 import { DEFAULT_SCHEDULING_STATE } from "@/lib/scheduler";
 import { notifyDirty } from "@/lib/sync/dirtyBus";
+import { isCardContentPatch } from "@/lib/sync/merge";
 import type { Card } from "@/lib/types";
 import type { CardRepository } from "./interfaces";
 
@@ -60,8 +61,12 @@ export class SqliteCardRepository implements CardRepository {
     return row ? rowToCard(row) : undefined;
   }
 
-  async create(card: Omit<Card, "id" | "createdAt" | "updatedAt">): Promise<Card> {
-    const db = await getDb();
+  /** Builds the full row and INSERTs it on the given executor — shared by
+   * create (own connection) and createMany (inside a transaction). */
+  private async insertCard(
+    executor: Pick<SQLiteDatabase, "runAsync">,
+    card: Omit<Card, "id" | "createdAt" | "updatedAt">,
+  ): Promise<Card> {
     const now = new Date().toISOString();
     const scheduling = card.scheduling ?? DEFAULT_SCHEDULING_STATE();
     const newCard: Card = {
@@ -71,7 +76,7 @@ export class SqliteCardRepository implements CardRepository {
       ...card,
       scheduling,
     };
-    await db.runAsync(
+    await executor.runAsync(
       `INSERT INTO cards (
         id, ownerId, deckId, front, back, alternateAnswers, answerJustifications,
         labels, keyPoints, createdAt, updatedAt,
@@ -98,8 +103,30 @@ export class SqliteCardRepository implements CardRepository {
         scheduling.lastReviewedAt,
       ],
     );
+    return newCard;
+  }
+
+  async create(card: Omit<Card, "id" | "createdAt" | "updatedAt">): Promise<Card> {
+    const db = await getDb();
+    const newCard = await this.insertCard(db, card);
     notifyDirty();
     return newCard;
+  }
+
+  async createMany(cards: Omit<Card, "id" | "createdAt" | "updatedAt">[]): Promise<Card[]> {
+    if (cards.length === 0) return [];
+    const db = await getDb();
+    const created: Card[] = [];
+    // Exclusive (not plain) transaction: withTransactionAsync is documented
+    // as interruptible by other async queries — a concurrent sync pull must
+    // not interleave with a bulk import.
+    await db.withExclusiveTransactionAsync(async (txn) => {
+      for (const card of cards) {
+        created.push(await this.insertCard(txn, card));
+      }
+    });
+    notifyDirty();
+    return created;
   }
 
   async update(
@@ -120,7 +147,10 @@ export class SqliteCardRepository implements CardRepository {
     const db = await getDb();
     const existing = await this.getById(id);
     if (!existing) throw new Error(`Card ${id} not found`);
-    const updatedAt = new Date().toISOString();
+    // updatedAt is the content group's LWW clock (see mergeCard) — a
+    // scheduling-only patch (study/test review) must leave it untouched so a
+    // concurrent remote content edit isn't judged stale and discarded.
+    const updatedAt = isCardContentPatch(patch) ? new Date().toISOString() : existing.updatedAt;
     const scheduling = patch.scheduling ?? existing.scheduling;
 
     await db.runAsync(

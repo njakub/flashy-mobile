@@ -68,7 +68,9 @@ export class EmbeddingGrader implements Grader {
       ...correctAnswers.map((a) => this.getCachedEmbedding(a)),
     ]);
 
-    let bestSimilarity = 0;
+    // Seed below any real cosine value (-1..1) so the best match is reported
+    // even when every accepted answer scores negative.
+    let bestSimilarity = -Infinity;
     let bestAnswer = correctAnswers[0];
     acceptedVecs.forEach((vec, i) => {
       const sim = cosineSimilarity(userVec, vec);

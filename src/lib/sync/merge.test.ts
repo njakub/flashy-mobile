@@ -8,7 +8,13 @@
  * covered without a real database. SyncEngine.ts (SQL-backed) calls these
  * functions verbatim.
  */
-import { mergeCard, mergeDeck, mergeTestRun, mergeTestRunQuestion } from "./merge";
+import {
+  isCardContentPatch,
+  mergeCard,
+  mergeDeck,
+  mergeTestRun,
+  mergeTestRunQuestion,
+} from "./merge";
 import type { StoredCard, StoredDeck, StoredTestRunQuestion } from "./merge";
 import type { WireCard, WireDeck, WireTestRunQuestion } from "./wire";
 
@@ -120,6 +126,32 @@ describe("mergeCard — four-quadrant conflict matrix", () => {
     const merged = mergeCard(local, wireCard());
     expect(merged?.front).toBe("local-front");
     expect(merged?.scheduling.lastReviewedAt).toBe("2026-01-01T00:10:00.000Z");
+  });
+});
+
+describe("content/scheduling clock independence (isCardContentPatch + mergeCard)", () => {
+  it("classifies scheduling-only patches as non-content", () => {
+    expect(isCardContentPatch({ scheduling: SCHEDULING })).toBe(false);
+    expect(isCardContentPatch({ front: "x" })).toBe(true);
+    expect(isCardContentPatch({ scheduling: SCHEDULING, labels: [] })).toBe(true);
+    expect(isCardContentPatch({})).toBe(false);
+  });
+
+  it("a local review must not clobber a newer remote content edit (the invariant SqliteCardRepository.update relies on)", () => {
+    // Device A reviews the card at 00:30: scheduling.lastReviewedAt advances,
+    // but — because the patch is scheduling-only — updatedAt stays at the
+    // pre-review 00:05. Device B edited the content at 00:10.
+    const local = localCard({
+      updatedAt: "2026-01-01T00:05:00.000Z",
+      scheduling: { ...SCHEDULING, lastReviewedAt: "2026-01-01T00:30:00.000Z" },
+      dirty: 1,
+    });
+    const merged = mergeCard(local, wireCard());
+    // Remote content wins, local review survives — quadrant 3, not a skip.
+    expect(merged).not.toBeNull();
+    expect(merged?.front).toBe("wire-front");
+    expect(merged?.scheduling.lastReviewedAt).toBe("2026-01-01T00:30:00.000Z");
+    expect(merged?.dirty).toBe(1);
   });
 });
 

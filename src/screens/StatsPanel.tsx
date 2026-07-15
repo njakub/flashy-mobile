@@ -5,6 +5,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { useRepositories } from "@/providers/RepositoryProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { activityDates, computeStreak, recentAccuracy } from "@/lib/dashboardStats";
+import { useReloadOnSync } from "@/lib/sync/useReloadOnSync";
 import { StatTile } from "@/ui";
 
 const ACCURACY_WINDOW_DAYS = 30;
@@ -43,6 +44,7 @@ export function StatsPanel() {
       void load();
     }, [load]),
   );
+  useReloadOnSync(load);
 
   if (!stats) return null;
 
