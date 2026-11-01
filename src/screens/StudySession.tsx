@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRepositories } from "@/providers/RepositoryProvider";
+import { loadDeckSubtreeIds } from "@/lib/decks/subtree";
 import { scheduler } from "@/lib/scheduler";
 import { distinctLabels } from "@/lib/testHistory";
 import { FLAGGED_LABEL } from "@/lib/constants";
@@ -41,7 +42,7 @@ function matchesLabels(card: CardType, selectedLabels: string[]): boolean {
  */
 export function StudySession({ deckId }: Props) {
   const { colors, space, radius, type, textStyle } = useTheme();
-  const { cards } = useRepositories();
+  const { cards, decks } = useRepositories();
   const router = useRouter();
 
   const [queue, setQueue] = useState<CardType[]>([]);
@@ -59,13 +60,15 @@ export function StudySession({ deckId }: Props) {
   const load = useCallback(
     async (studyAhead = false) => {
       setLoading(true);
-      const allDeckCards = await cards.getByDeck(deckId);
+      // A parent deck studies its whole subtree.
+      const deckIds = await loadDeckSubtreeIds(decks, deckId);
+      const allDeckCards = await cards.getByDecks(deckIds);
       const matching = allDeckCards.filter((c) => matchesLabels(c, selectedLabels));
       setLabelOptions(distinctLabels(allDeckCards));
       setDeckTotalCount(allDeckCards.length);
       setDeckFilteredCount(matching.length);
 
-      let due = (await cards.getDueCards(deckId, new Date())).filter((c) =>
+      let due = (await cards.getDueCardsInDecks(deckIds, new Date())).filter((c) =>
         matchesLabels(c, selectedLabels),
       );
       if (due.length === 0 && studyAhead) due = matching;
@@ -81,7 +84,7 @@ export function StudySession({ deckId }: Props) {
       setStudyingAhead(studyAhead && due.length > 0);
       setLoading(false);
     },
-    [cards, deckId, selectedLabels],
+    [cards, decks, deckId, selectedLabels],
   );
 
   const loadDue = useCallback(() => load(false), [load]);

@@ -36,6 +36,9 @@ export function mergeDeck(local: StoredDeck | null, wire: WireDeck): StoredDeck 
     id: wire.id,
     ownerId: wire.ownerId,
     name: wire.name,
+    // A not-yet-deployed server omits parentId — keep the local value
+    // rather than flattening the hierarchy.
+    parentId: wire.parentId !== undefined ? wire.parentId : (local?.parentId ?? null),
     createdAt: wire.createdAt,
     updatedAt: wire.updatedAt,
     deletedAt: wire.deletedAt,

@@ -3,6 +3,7 @@ import { FlatList, Text, View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRepositories } from "@/providers/RepositoryProvider";
+import { loadDeckSubtreeIds } from "@/lib/decks/subtree";
 import { Screen, Chip } from "@/ui";
 import { cardLabelsById, formatDuration } from "@/lib/testHistory";
 import type { Card, TestRun, TestRunQuestion } from "@/lib/types";
@@ -14,7 +15,7 @@ interface Props {
 
 export function TestRunDetail({ runId }: Props) {
   const { colors, space, type, textStyle, onSemantic } = useTheme();
-  const { cards, testRuns } = useRepositories();
+  const { cards, decks, testRuns } = useRepositories();
 
   const [loading, setLoading] = useState(true);
   const [run, setRun] = useState<TestRun | null>(null);
@@ -29,9 +30,10 @@ export function TestRunDetail({ runId }: Props) {
     ]);
     setRun(r ?? null);
     setQuestions(qs);
-    setCardList(r ? await cards.getByDeck(r.deckId) : []);
+    // Runs started from a parent deck include descendant decks' cards.
+    setCardList(r ? await cards.getByDecks(await loadDeckSubtreeIds(decks, r.deckId)) : []);
     setLoading(false);
-  }, [testRuns, cards, runId]);
+  }, [testRuns, cards, decks, runId]);
 
   useFocusEffect(
     useCallback(() => {

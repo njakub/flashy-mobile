@@ -17,6 +17,9 @@ export interface WireDeck {
   id: string;
   ownerId: string;
   name: string;
+  // Optional in this client mirror (unlike the server's required WireDeck)
+  // so a not-yet-deployed server's pull — which omits it — still type-checks.
+  parentId?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;

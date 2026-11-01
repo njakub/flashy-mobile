@@ -60,6 +60,13 @@ npx eas build --profile production --platform all        # store builds
 
 `eas.json`'s `production`/`preview` profiles don't hardcode an API URL — set `EXPO_PUBLIC_API_URL` for your deployed `flashy-api` as an EAS secret or in the profile's `env` block before building for anything other than local dev.
 
+## Hand-mirrored files
+
+These must be kept in step with the web app (`../flashy`) by hand:
+
+- `src/lib/sync/wire.ts` — the `POST /sync` wire protocol (also mirrored in `flashy-api/src/sync/`).
+- `src/lib/decks/tree.ts` — pure deck-hierarchy helpers for nested decks (`Deck.parentId`): tree building, subtree ids, breadcrumbs, cycle checks. Mirrors `flashy/src/lib/decks/tree.ts`.
+
 ## Known v1 scope cuts
 
-Carried over from `docs/plans/flashy-mobile.md`: no AI card generation, no Google sign-in (email/password only), no voice input/TTS, no usage dashboard, no import/export UI, no per-deck grading-threshold overrides, no AI-grading auto-cascade (the "Let AI grade" button in Test mode's ambiguous band is a manual escalation only). All have existing seams in the web app's code if/when they're wanted here.
+Carried over from `docs/plans/flashy-mobile.md`: no AI card generation, no voice input/TTS, no usage dashboard, no import/export UI, no per-deck grading-threshold overrides, no AI-grading auto-cascade (the "Let AI grade" button in Test mode's ambiguous band is a manual escalation only). All have existing seams in the web app's code if/when they're wanted here.

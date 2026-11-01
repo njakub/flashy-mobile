@@ -247,6 +247,7 @@ describe("mergeDeck", () => {
       id: "d1",
       ownerId: "owner",
       name: "local-name",
+      parentId: null,
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
       deletedAt: null,
@@ -262,6 +263,7 @@ describe("mergeDeck", () => {
       id: "d1",
       ownerId: "owner",
       name: "local-name",
+      parentId: null,
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:20:00.000Z", // newer than wire
       deletedAt: null,
@@ -274,6 +276,31 @@ describe("mergeDeck", () => {
   it("applies a tombstone (deletedAt) like any other field", () => {
     const merged = mergeDeck(null, wireDeck({ deletedAt: "2026-01-01T00:15:00.000Z" }));
     expect(merged?.deletedAt).toBe("2026-01-01T00:15:00.000Z");
+  });
+
+  it("applies a wire parentId, including null", () => {
+    expect(mergeDeck(null, wireDeck({ parentId: "parent" }))?.parentId).toBe("parent");
+    expect(mergeDeck(null, wireDeck({ parentId: null }))?.parentId).toBeNull();
+  });
+
+  it("a wire row without parentId (server not yet deployed) preserves the local parent", () => {
+    const local: StoredDeck = {
+      id: "d1",
+      ownerId: "owner",
+      name: "local-name",
+      parentId: "parent",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      deletedAt: null,
+      dirty: 1,
+    };
+    const merged = mergeDeck(local, wireDeck());
+    expect(merged?.name).toBe("wire-name");
+    expect(merged?.parentId).toBe("parent");
+  });
+
+  it("a new deck from a wire row without parentId defaults to top level", () => {
+    expect(mergeDeck(null, wireDeck())?.parentId).toBeNull();
   });
 });
 

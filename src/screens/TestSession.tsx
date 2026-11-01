@@ -4,6 +4,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRepositories } from "@/providers/RepositoryProvider";
+import { loadDeckSubtreeIds } from "@/lib/decks/subtree";
 import { useAuth } from "@/providers/AuthProvider";
 import { scheduler } from "@/lib/scheduler";
 import { EmbeddingGrader, preloadEmbeddingModel } from "@/lib/grading/EmbeddingGrader";
@@ -56,7 +57,7 @@ function withSuccessMessage(card: CardType, result: GradeResult): GradeResult {
  */
 export function TestSession({ deckId }: Props) {
   const { colors, space, radius, type, textStyle, onSemantic } = useTheme();
-  const { cards, testRuns } = useRepositories();
+  const { cards, decks, testRuns } = useRepositories();
   const { ownerId, status, getAccessToken } = useAuth();
   const isSignedIn = status === "signedIn";
   const router = useRouter();
@@ -129,7 +130,9 @@ export function TestSession({ deckId }: Props) {
     let cancelled = false;
     async function load() {
       setPhase("loading");
-      const all = await cards.getByDeck(deckId);
+      // A parent deck tests its whole subtree; the run is still recorded
+      // against deckId (the deck the test was started from).
+      const all = await cards.getByDecks(await loadDeckSubtreeIds(decks, deckId));
       if (cancelled) return;
       setPool(all);
       setPhase("pick");

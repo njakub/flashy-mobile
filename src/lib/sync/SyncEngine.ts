@@ -57,6 +57,7 @@ function rowToStoredDeck(row: DeckRow): StoredDeck {
     id: row.id,
     ownerId: row.ownerId,
     name: row.name,
+    parentId: row.parentId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     deletedAt: row.deletedAt,
@@ -130,6 +131,7 @@ function toWireDeckPush(d: StoredDeck) {
   return {
     id: d.id,
     name: d.name,
+    parentId: d.parentId ?? null,
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
     deletedAt: d.deletedAt,
@@ -284,9 +286,18 @@ export class SyncEngine {
     const merged = mergeDeck(localRow ? rowToStoredDeck(localRow) : null, wire);
     if (!merged) return;
     await txn.runAsync(
-      `INSERT OR REPLACE INTO decks (id, ownerId, name, createdAt, updatedAt, deletedAt, dirty)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [merged.id, merged.ownerId, merged.name, merged.createdAt, merged.updatedAt, merged.deletedAt, merged.dirty],
+      `INSERT OR REPLACE INTO decks (id, ownerId, name, parentId, createdAt, updatedAt, deletedAt, dirty)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        merged.id,
+        merged.ownerId,
+        merged.name,
+        merged.parentId,
+        merged.createdAt,
+        merged.updatedAt,
+        merged.deletedAt,
+        merged.dirty,
+      ],
     );
   }
 

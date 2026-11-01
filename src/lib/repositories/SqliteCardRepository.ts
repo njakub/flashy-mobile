@@ -43,6 +43,28 @@ export class SqliteCardRepository implements CardRepository {
     return rows.map(rowToCard);
   }
 
+  async getByDecks(deckIds: string[]): Promise<Card[]> {
+    if (deckIds.length === 0) return [];
+    const db = await getDb();
+    const marks = deckIds.map(() => "?").join(", ");
+    const rows = await db.getAllAsync<CardRow>(
+      `SELECT * FROM cards WHERE deckId IN (${marks}) AND deletedAt IS NULL`,
+      deckIds,
+    );
+    return rows.map(rowToCard);
+  }
+
+  async getDueCardsInDecks(deckIds: string[], now: Date): Promise<Card[]> {
+    if (deckIds.length === 0) return [];
+    const db = await getDb();
+    const marks = deckIds.map(() => "?").join(", ");
+    const rows = await db.getAllAsync<CardRow>(
+      `SELECT * FROM cards WHERE deckId IN (${marks}) AND deletedAt IS NULL AND dueAt <= ?`,
+      [...deckIds, now.toISOString()],
+    );
+    return rows.map(rowToCard);
+  }
+
   async getAllByOwner(ownerId: string): Promise<Card[]> {
     const db = await getDb();
     const rows = await db.getAllAsync<CardRow>(

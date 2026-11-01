@@ -64,5 +64,12 @@ INSERT INTO sync_state (id, decks, cards, testRuns, testRunQuestions)
   VALUES ('cursor', '0', '0', '0', '0');
 `;
 
+// Deck nesting (Deck.parentId). Existing rows become top-level (NULL) and
+// are NOT marked dirty — the server already holds them as NULL.
+const MIGRATION_2 = `
+ALTER TABLE decks ADD COLUMN parentId TEXT;
+CREATE INDEX decks_parent ON decks(parentId);
+`;
+
 /** MIGRATIONS[i] takes the schema from version i to version i+1. */
-export const MIGRATIONS: readonly string[] = [MIGRATION_1];
+export const MIGRATIONS: readonly string[] = [MIGRATION_1, MIGRATION_2];

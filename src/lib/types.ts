@@ -39,6 +39,9 @@ export interface Deck {
   id: string;
   ownerId: string;
   name: string;
+  /** Parent deck for nesting; null = top-level. Content field (synced
+   *  last-writer-wins with name). Tree helpers: src/lib/decks/tree.ts. */
+  parentId: string | null;
   createdAt: string;
   updatedAt: string;
 }

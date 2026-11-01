@@ -10,6 +10,7 @@ export interface DeckRow {
   id: string;
   ownerId: string;
   name: string;
+  parentId: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -67,6 +68,7 @@ export function rowToDeck(row: DeckRow): Deck {
     id: row.id,
     ownerId: row.ownerId,
     name: row.name,
+    parentId: row.parentId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
