@@ -8,14 +8,18 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:3001"
+        "EXPO_PUBLIC_API_URL": "http://localhost:3001",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "158651950780-buv6p1dft4ldb3004icpebkh5uc26sd5.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "158651950780-ejl6hru9cklf2c7i5d8vv6go79c48ibe.apps.googleusercontent.com"
       }
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://flashy-api.fly.dev"
+        "EXPO_PUBLIC_API_URL": "https://flashy-api.fly.dev",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "158651950780-buv6p1dft4ldb3004icpebkh5uc26sd5.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "158651950780-ejl6hru9cklf2c7i5d8vv6go79c48ibe.apps.googleusercontent.com"
       },
       "android": {
         "buildType": "apk"
@@ -25,7 +29,9 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://flashy-api.fly.dev"
+        "EXPO_PUBLIC_API_URL": "https://flashy-api.fly.dev",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "158651950780-buv6p1dft4ldb3004icpebkh5uc26sd5.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "158651950780-ejl6hru9cklf2c7i5d8vv6go79c48ibe.apps.googleusercontent.com"
       }
     }
   },

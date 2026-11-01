@@ -150,8 +150,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await applySession(tokens);
         return tokens.accessToken;
       } catch {
-        clearSession();
-        return null;
+        // Only clear if a newer sign-in hasn't replaced the token we used.
+        if (sessionRef.current?.refreshToken === storedRefreshToken || !sessionRef.current) {
+          clearSession();
+        }
+        return sessionRef.current?.accessToken ?? null;
       } finally {
         refreshPromiseRef.current = null;
       }
@@ -205,13 +208,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setStatus("signedOut");
         return;
       }
+      // If the user signs in while this (possibly slow, possibly stale)
+      // refresh is in flight, the fresh session wins — don't overwrite it
+      // on success or clear it on failure.
       try {
         const tokens = await AuthClient.refresh(stored);
-        if (cancelled) return;
+        if (cancelled || sessionRef.current) return;
         await applySession(tokens);
         await bootstrapLocalUserData(tokens.user.id);
       } catch {
-        if (!cancelled) clearSession();
+        if (!cancelled && !sessionRef.current) clearSession();
       }
     })();
     return () => {
